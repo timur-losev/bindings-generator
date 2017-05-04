@@ -11,22 +11,25 @@ do {
             JSB_AUTOCOMPARTMENT_WITH_GLOBAL_OBJCET
             #set arg_count = len($param_types)
             #if $arg_count > 0
-            jsval largv[${arg_count}];
+            JS::AutoValueVector valArr(cx);
+            JS::RootedValue largv(cx);
             #end if
             #set $count = 0
             #while $count < $arg_count
                 #set $arg = $param_types[$count]
             ${arg.from_native({"generator": $generator,
                                  "in_value": "larg" + str(count),
-                                 "out_value": "largv[" + str(count) + "]",
+                                 "out_value": "largv",
                                  "class_name": $class_name,
                                  "level": 2,
                                  "ntype": str($arg)})};
+            valArr.append(largv);
                 #set $count = $count + 1
             #end while
             JS::RootedValue rval(cx);
             #if $arg_count > 0
-            bool succeed = func->invoke(JS::HandleValueArray::fromMarkedLocation(${arg_count}, largv), &rval);
+            JS::HandleValueArray largsv(valArr);
+            bool succeed = func->invoke(largsv, &rval);
             #else
             bool succeed = func->invoke(JS::HandleValueArray::empty(), &rval);
             #end if

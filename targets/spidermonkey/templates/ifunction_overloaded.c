@@ -1,5 +1,5 @@
 ## ===== instance function implementation template - for overloaded functions
-bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
+bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 {
     #if $is_constructor
     bool ok = true;
@@ -83,7 +83,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
                 #else
             ${func.ret_type.get_whole_name($generator)} ret = cobj->${func.func_name}($arg_list);
                 #end if
-            jsval jsret = JSVAL_NULL;
+            JS::RootedValue jsret(cx, JS::NullValue());
             ${func.ret_type.from_native({"generator": $generator,
                                                       "in_value": "ret",
                                                       "out_value": "jsret",
@@ -104,11 +104,15 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
 #end if
 #end for
 #if $is_constructor
-    if (cobj) {
+    if (cobj)
+    {
+        JS::RootedValue objVal(cx, JS::ObjectOrNullValue(obj));
         if (JS_HasProperty(cx, obj, "_ctor", &ok) && ok)
-                ScriptingCore::getInstance()->executeFunctionWithOwner(OBJECT_TO_JSVAL(obj), "_ctor", args);
-
-        args.rval().set(OBJECT_TO_JSVAL(obj));
+        {
+            JS::HandleValueArray argsv(args);
+            ScriptingCore::getInstance()->executeFunctionWithOwner(objVal, "_ctor", argsv);
+        }
+        args.rval().set(objVal);
         return true;
     }
 #end if

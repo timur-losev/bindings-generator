@@ -1,5 +1,5 @@
 ## ===== constructor function implementation template
-bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
+bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
     bool ok = true;
@@ -46,9 +46,13 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
 #else
     JS::RootedObject jsobj(cx, jsb_create_weak_jsobject(cx, cobj, typeClass, "${namespaced_class_name}"));
 #end if
-    args.rval().set(OBJECT_TO_JSVAL(jsobj));
-    if (JS_HasProperty(cx, jsobj, "_ctor", &ok) && ok)
-        ScriptingCore::getInstance()->executeFunctionWithOwner(OBJECT_TO_JSVAL(jsobj), "_ctor", args);
+    JS::RootedValue retVal(cx, JS::ObjectOrNullValue(jsobj));
+    args.rval().set(retVal);
+    if (JS_HasProperty(cx, jsobj, "_ctor", &ok) && ok) 
+    {
+        JS::HandleValueArray argsv(args);
+        ScriptingCore::getInstance()->executeFunctionWithOwner(retVal, "_ctor", argsv);
+    }
     return true;
 #end if
 }

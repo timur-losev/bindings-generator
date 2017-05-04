@@ -1,5 +1,5 @@
 ## ===== static function implementation template
-bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
+bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
 #if len($arguments) > 0
@@ -58,7 +58,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
           #else
         ${ret_type.get_whole_name($generator)} ret = ${namespaced_class_name}::${func_name}($arg_list);
           #end if
-        jsval jsret = JSVAL_NULL;
+        JS::RootedValue jsret(cx, JS::NullValue());
         ${ret_type.from_native({"generator": $generator,
                                 "in_value": "ret",
                                 "out_value": "jsret",
