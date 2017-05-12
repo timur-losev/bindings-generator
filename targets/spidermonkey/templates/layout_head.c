@@ -25,7 +25,7 @@ $macro_judgement
 template<class T>
 static bool dummy_constructor(JSContext *cx, uint32_t argc, JS::Value *vp)
 {
-    JS_ReportError(cx, "Constructor for the requested class is not available, please refer to the API reference.");
+    JS_ReportErrorUTF8(cx, "Constructor for the requested class is not available, please refer to the API reference.");
     return false;
 }
 

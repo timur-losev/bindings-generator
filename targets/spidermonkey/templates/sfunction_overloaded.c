@@ -61,6 +61,6 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
     #end while
     #end if
     #end for
-    JS_ReportError(cx, "${signature_name} : wrong number of arguments");
+    JS_ReportErrorUTF8(cx, "${signature_name} : wrong number of arguments");
     return false;
 }

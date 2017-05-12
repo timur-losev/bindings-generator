@@ -34,7 +34,7 @@ do {
             bool succeed = func->invoke(JS::HandleValueArray::empty(), &rval);
             #end if
             if (!succeed && JS_IsExceptionPending(cx)) {
-                JS_ReportPendingException(cx);
+                handlePendingException(cx);
             }
             #if $ret_type.name != "void"
             bool ok = true;

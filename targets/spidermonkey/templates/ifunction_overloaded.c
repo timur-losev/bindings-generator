@@ -67,8 +67,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
             #if not $is_ctor
             js_type_class_t *typeClass = js_get_type_from_native<${namespaced_class_name}>(cobj);
             JS::RootedObject proto(cx, typeClass->proto);
-            JS::RootedObject parent(cx, typeClass->parentProto);
-            obj = JS_NewObject(cx, typeClass->jsclass, proto, parent);
+            obj = JS_NewObjectWithGivenProto(cx, typeClass->jsclass, proto);
             #end if
             js_proxy_t* p = jsb_new_proxy(cobj, obj);
             #if $is_ref_class
@@ -116,6 +115,6 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
         return true;
     }
 #end if
-    JS_ReportError(cx, "${signature_name} : wrong number of arguments");
+    JS_ReportErrorUTF8(cx, "${signature_name} : wrong number of arguments");
     return false;
 }
