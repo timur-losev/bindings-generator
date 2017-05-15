@@ -16,7 +16,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 #end if
 #if not $is_constructor
     obj.set(args.thisv().toObjectOrNull());
-    js_proxy_t *proxy = jsb_get_js_proxy(obj);
+    js_proxy_t *proxy = jsb_get_js_proxy(cx, obj);
     cobj = (${namespaced_class_name} *)(proxy ? proxy->ptr : nullptr);
     JSB_PRECONDITION2( cobj, cx, false, "${signature_name} : Invalid Native Object");
 #end if
@@ -69,12 +69,12 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
             JS::RootedObject proto(cx, typeClass->proto);
             obj = JS_NewObjectWithGivenProto(cx, typeClass->jsclass, proto);
             #end if
-            js_proxy_t* p = jsb_new_proxy(cobj, obj);
             #if $is_ref_class
-            jsb_ref_init(cx, &p->obj, cobj, "${namespaced_class_name}");
+            jsb_ref_init(cx, obj, cobj, "${namespaced_class_name}");
             #else
-            jsb_non_ref_init(cx, &p->obj, cobj, "${namespaced_class_name}");
+            jsb_non_ref_init(cx, obj, cobj, "${namespaced_class_name}");
             #end if
+            jsb_new_proxy(cx, cobj, obj);
         #else
             #if str($func.ret_type) != "void"
                 #if $func.ret_type.is_enum
@@ -82,7 +82,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
                 #else
             ${func.ret_type.get_whole_name($generator)} ret = cobj->${func.func_name}($arg_list);
                 #end if
-            JS::RootedValue jsret(cx, JS::NullValue());
+            JS::RootedValue jsret(cx, JS::NullHandleValue);
             ${func.ret_type.from_native({"generator": $generator,
                                                       "in_value": "ret",
                                                       "out_value": "jsret",

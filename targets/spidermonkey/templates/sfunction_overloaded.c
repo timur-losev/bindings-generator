@@ -44,7 +44,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
                 #else
             ${func.ret_type.get_whole_name($generator)} ret = ${namespaced_class_name}::${func.func_name}($arg_list);
                 #end if
-            JS::RootedValue jsret(cx, JS::NullValue());
+            JS::RootedValue jsret(cx, JS::NullHandleValue);
             ${func.ret_type.from_native({"generator": $generator,
                                          "in_value": "ret",
                                          "out_value": "jsret",
