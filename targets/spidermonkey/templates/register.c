@@ -1,22 +1,37 @@
+#set generator = $current_class.generator
+#set methods = $current_class.methods_clean()
+#set st_methods = $current_class.static_methods_clean()
+#set public_fields = $current_class.public_fields
 #set has_constructor = False
+#set has_finalize = False
+#set has_methods = False
+#set has_public_fields = False
+#set has_static_methods = False
 #if $current_class.methods.has_key('constructor')
 #set has_constructor = True
 #set constructor = $current_class.methods.constructor
 ${current_class.methods.constructor.generate_code($current_class)}
 #end if
+#if (not $current_class.is_ref_class and $has_constructor)
+#set has_finalize = True
+#end if
+#if len(methods) > 0
+#set has_methods = True
+#end if
+#if len($public_fields) > 0
+#set has_public_fields = True
+#end if
+#if len(st_methods) > 0
+#set has_static_methods = True
+#end if
 
-#set generator = $current_class.generator
-#set methods = $current_class.methods_clean()
-#set st_methods = $current_class.static_methods_clean()
-#set public_fields = $current_class.public_fields
 #if len($current_class.parents) > 0
 extern JSObject *jsb_${current_class.parents[0].underlined_class_name}_prototype;
 
 #end if
-#if (not $current_class.is_ref_class and $has_constructor)
+#if has_finalize
 void js_${current_class.underlined_class_name}_finalize(JSFreeOp *fop, JSObject *obj) {
     CCLOGINFO("jsbindings: finalizing JS object %p (${current_class.class_name})", obj);
-    js_proxy_t* nproxy;
     js_proxy_t* jsproxy;
     JSContext *cx = ScriptingCore::getInstance()->getGlobalContext();
     JS::RootedObject jsobj(cx, obj);
@@ -44,10 +59,10 @@ void js_${current_class.underlined_class_name}_finalize(JSFreeOp *fop, JSObject 
 #end if
 #end if
 void js_register_${generator.prefix}_${current_class.class_name}(JSContext *cx, JS::HandleObject global) {
-    const JSClassOps ${current_class.underlined_class_name}_classOps = {
+    static const JSClassOps ${current_class.underlined_class_name}_classOps = {
         nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr,
-#if (not $current_class.is_ref_class and $has_constructor)
+#if has_finalize
         js_${current_class.underlined_class_name}_finalize,
 #else
         nullptr,
@@ -56,10 +71,15 @@ void js_register_${generator.prefix}_${current_class.class_name}(JSContext *cx, 
     };
     static JSClass ${current_class.underlined_class_name}_class = {
         "${current_class.target_class_name}",
+#if has_finalize
+        JSCLASS_HAS_PRIVATE | JSCLASS_FOREGROUND_FINALIZE,
+#else
         JSCLASS_HAS_PRIVATE,
+#end if
         &${current_class.underlined_class_name}_classOps
     };
     jsb_${current_class.underlined_class_name}_class = &${current_class.underlined_class_name}_class;
+#if has_public_fields
 
     static JSPropertySpec properties[] = {
 #for m in public_fields
@@ -69,6 +89,8 @@ void js_register_${generator.prefix}_${current_class.class_name}(JSContext *cx, 
 #end for
         JS_PS_END
     };
+#end if
+#if has_methods
 
     static JSFunctionSpec funcs[] = {
         #for m in methods
@@ -80,8 +102,9 @@ void js_register_${generator.prefix}_${current_class.class_name}(JSContext *cx, 
 #end if
         JS_FS_END
     };
+#end if
+#if has_static_methods
 
-    #if len(st_methods) > 0
     static JSFunctionSpec st_funcs[] = {
         #for m in st_methods
         #set fn = m['impl']
@@ -89,35 +112,44 @@ void js_register_${generator.prefix}_${current_class.class_name}(JSContext *cx, 
         #end for
         JS_FS_END
     };
-    #else
-    JSFunctionSpec *st_funcs = NULL;
-    #end if
+#end if
 
 #if len($current_class.parents) > 0
     JS::RootedObject parent_proto(cx, jsb_${current_class.parents[0].underlined_class_name}_prototype);
+#else
+    JS::RootedObject parent_proto(cx, nullptr);
 #end if
     jsb_${current_class.underlined_class_name}_prototype = JS_InitClass(
         cx, global,
-#if len($current_class.parents) > 0
         parent_proto,
-#else
-        nullptr,
-#end if
         jsb_${current_class.underlined_class_name}_class,
 #if has_constructor
-        js_${generator.prefix}_${current_class.class_name}_constructor, 0, // constructor
+        js_${generator.prefix}_${current_class.class_name}_constructor, 0,
 #else if $current_class.is_abstract
         empty_constructor, 0,
 #else
-        dummy_constructor<${current_class.namespaced_class_name}>, 0, // no constructor
+        dummy_constructor<${current_class.namespaced_class_name}>, 0,
 #end if
+#if has_public_fields
         properties,
+#else
+        nullptr,
+#end if
+#if has_methods
         funcs,
-        nullptr, // no static properties
+#else
+        nullptr,
+#end if
+        nullptr,
+#if has_static_methods
         st_funcs);
+#else
+        nullptr);
+#end if
 
     JS::RootedObject proto(cx, jsb_${current_class.underlined_class_name}_prototype);
-    JS::RootedValue className(cx, std_string_to_jsval(cx, "${current_class.class_name}"));
+    JS::RootedValue className(cx);
+    std_string_to_jsval(cx, "${current_class.class_name}", &className);
     JS_SetProperty(cx, proto, "_className", className);
     JS_SetProperty(cx, proto, "__nativeObj", JS::TrueHandleValue);
 #if $current_class.is_ref_class
@@ -132,7 +164,7 @@ void js_register_${generator.prefix}_${current_class.class_name}(JSContext *cx, 
     jsb_register_class<${current_class.namespaced_class_name}>(cx, jsb_${current_class.underlined_class_name}_class, proto);
 #end if
 #if $generator.in_listed_extend_classed($current_class.class_name) and not $current_class.is_abstract
-    anonEvaluate(cx, global, "(function () { ${generator.target_ns}.${current_class.target_class_name}.extend = cc.Class.extend; })()");
+    make_class_extend(cx, proto);
 #end if
 }
 

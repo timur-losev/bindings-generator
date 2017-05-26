@@ -7,6 +7,7 @@ bool ${signature_name}_get_${name}(JSContext *cx, uint32_t argc, JS::Value *vp)
     ${namespaced_class_name}* cobj = (${namespaced_class_name} *)(proxy ? proxy->ptr : NULL);
     JSB_PRECONDITION2( cobj, cx, false, "${signature_name}_get_${name} : Invalid Native Object");
 
+    bool ok = true;
     JS::RootedValue jsret(cx);
     #if $ntype.is_object and not $ntype.object_can_convert($generator, False)
     ${ntype.from_native({"generator": $generator,
@@ -26,6 +27,7 @@ bool ${signature_name}_get_${name}(JSContext *cx, uint32_t argc, JS::Value *vp)
                          "out_value": "jsret"
                          })};
     #end if
+    JSB_PRECONDITION2(ok, cx, false, "${signature_name}_get_${name} : error parsing return value");
     args.rval().set(jsret);
     return true;
 }

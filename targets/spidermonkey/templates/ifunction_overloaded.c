@@ -28,8 +28,10 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
     #set arg_list = ""
     #set arg_array = []
     do {
-        #if not $is_constructor and $arg_idx > 0
+        #if not $is_constructor
+            #if $arg_idx > 0 or str($func.ret_type) != "void"
         bool ok = true;
+            #end if
         #end if
         #if $is_constructor
         ok = true;
@@ -66,7 +68,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 
             #if not $is_ctor
             js_type_class_t *typeClass = js_get_type_from_native<${namespaced_class_name}>(cobj);
-            JS::RootedObject proto(cx, typeClass->proto);
+            JS::RootedObject proto(cx, typeClass->proto->get());
             obj = JS_NewObjectWithGivenProto(cx, typeClass->jsclass, proto);
             #end if
             #if $is_ref_class
@@ -88,6 +90,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
                                                       "out_value": "jsret",
                                                       "ntype": str($func.ret_type),
                                                       "level": 2})};
+            JSB_PRECONDITION2(ok, cx, false, "${signature_name} : error parsing return value");
             args.rval().set(jsret);
             #else
             cobj->${func.func_name}($arg_list);

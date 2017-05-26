@@ -2,7 +2,7 @@
 bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-#if len($arguments) > 0
+#if len($arguments) > 0 or str($ret_type) != "void"
     bool ok = true;
 #end if
 #if len($arguments) >= $min_args
@@ -64,6 +64,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
                                 "out_value": "jsret",
                                 "ntype": str($ret_type),
                                 "level": 1})};
+        JSB_PRECONDITION2(ok, cx, false, "${signature_name} : error parsing return value");
         args.rval().set(jsret);
         #end if
     #else

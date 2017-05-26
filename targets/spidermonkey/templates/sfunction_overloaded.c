@@ -9,7 +9,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
     #set arg_idx = $func.min_args
     #while $arg_idx <= $arg_count
     do {
-        #if $arg_idx > 0
+        #if $arg_idx > 0 or str($func.ret_type) != "void"
         bool ok = true;
         #end if
         if (argc == ${arg_idx}) {
@@ -50,6 +50,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
                                          "out_value": "jsret",
                                          "ntype": str($func.ret_type),
                                          "level": 3})};
+            JSB_PRECONDITION2(ok, cx, false, "${signature_name} : error parsing return value");
             args.rval().set(jsret);
             #else
             ${namespaced_class_name}::${func.func_name}($arg_list);
