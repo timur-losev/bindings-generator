@@ -3,6 +3,7 @@
 #set st_methods = $current_class.static_methods_clean()
 #set public_fields = $current_class.public_fields
 #set has_constructor = False
+#set has_ctor = False
 #set has_finalize = False
 #set has_methods = False
 #set has_public_fields = False
@@ -12,10 +13,13 @@
 #set constructor = $current_class.methods.constructor
 ${current_class.methods.constructor.generate_code($current_class)}
 #end if
+#if $generator.in_listed_extend_classed($current_class.class_name) and $has_constructor
+#set has_ctor = True
+#end if
 #if (not $current_class.is_ref_class and $has_constructor)
 #set has_finalize = True
 #end if
-#if len(methods) > 0
+#if len(methods) > 0 or has_ctor
 #set has_methods = True
 #end if
 #if len($public_fields) > 0
@@ -51,7 +55,7 @@ void js_${current_class.underlined_class_name}_finalize(JSFreeOp *fop, JSObject 
     }
 }
 #end if
-#if $generator.in_listed_extend_classed($current_class.class_name) and $has_constructor
+#if has_ctor
 #if not $constructor.is_overloaded
     ${constructor.generate_code($current_class, None, False, True)}
 #else
@@ -97,7 +101,7 @@ void js_register_${generator.prefix}_${current_class.class_name}(JSContext *cx, 
         #set fn = m['impl']
         JS_FN("${m['name']}", ${fn.signature_name}, ${fn.min_args}, JSPROP_PERMANENT | JSPROP_ENUMERATE),
         #end for
-#if $generator.in_listed_extend_classed($current_class.class_name) and $has_constructor
+#if has_ctor
         JS_FN("ctor", js_${generator.prefix}_${current_class.class_name}_ctor, 0, JSPROP_PERMANENT | JSPROP_ENUMERATE),
 #end if
         JS_FS_END

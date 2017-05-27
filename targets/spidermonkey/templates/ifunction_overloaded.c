@@ -1,9 +1,7 @@
 ## ===== instance function implementation template - for overloaded functions
 bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 {
-    #if $is_constructor
     bool ok = true;
-    #end if
     ${namespaced_class_name}* cobj = nullptr;
 
 #if not $is_ctor   
@@ -28,14 +26,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
     #set arg_list = ""
     #set arg_array = []
     do {
-        #if not $is_constructor
-            #if $arg_idx > 0 or str($func.ret_type) != "void"
-        bool ok = true;
-            #end if
-        #end if
-        #if $is_constructor
         ok = true;
-        #end if
         #if $func.min_args >= 0
         if (argc == $arg_idx) {
             #set $count = 0

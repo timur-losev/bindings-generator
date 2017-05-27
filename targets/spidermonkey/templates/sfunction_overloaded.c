@@ -10,7 +10,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
     #while $arg_idx <= $arg_count
     do {
         #if $arg_idx > 0 or str($func.ret_type) != "void"
-        bool ok = true;
+        bool ok = true; CC_UNUSED_PARAM(ok);
         #end if
         if (argc == ${arg_idx}) {
             #set arg_list = ""

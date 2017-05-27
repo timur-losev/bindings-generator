@@ -3,7 +3,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
 #if len($arguments) > 0 or $ret_type.name != "void"
-    bool ok = true;
+    bool ok = true; CC_UNUSED_PARAM(ok);
 #end if
 #if not $is_constructor
     JS::RootedObject obj(cx, args.thisv().toObjectOrNull());
