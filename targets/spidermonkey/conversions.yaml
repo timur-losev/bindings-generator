@@ -166,7 +166,9 @@ conversions:
     "b2AABB": "ok &= b2AABB_to_jsval(cx, ${in_value}, &${out_value})"
     object: |
       if (${in_value}) {
-      ${($level + 1) * '    '}${out_value} = JS::ObjectOrNullValue(js_get_or_create_jsobject<${ntype.replace("*", "").replace("const ", "")}>(cx, (${ntype.replace("const ", "")})${in_value}));
+      ${($level + 1) * '    '}JS::RootedObject ${out_value}Obj(cx);
+      ${($level + 1) * '    '}js_get_or_create_jsobject<${ntype.replace("*", "").replace("const ", "")}>(cx, (${ntype.replace("const ", "")})${in_value}, &${out_value}Obj);
+      ${($level + 1) * '    '}${out_value} = JS::ObjectOrNullValue(${out_value}Obj);
       ${($level    ) * '    '}} else {
       ${($level + 1) * '    '}${out_value} = JS::NullHandleValue;
       ${($level    ) * '    '}}

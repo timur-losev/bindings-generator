@@ -40,11 +40,12 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 
     js_type_class_t *typeClass = js_get_type_from_native<${namespaced_class_name}>(cobj);
 
-    // link the native object with the javascript object
+    // create the js object and link the native object with the javascript object
+    JS::RootedObject jsobj(cx);
 #if $is_ref_class
-    JS::RootedObject jsobj(cx, jsb_ref_create_jsobject(cx, cobj, typeClass, "${namespaced_class_name}"));
+    jsb_ref_create_jsobject(cx, cobj, typeClass, &jsobj, "${namespaced_class_name}");
 #else
-    JS::RootedObject jsobj(cx, jsb_create_weak_jsobject(cx, cobj, typeClass, "${namespaced_class_name}"));
+    jsb_create_weak_jsobject(cx, cobj, typeClass, &jsobj, "${namespaced_class_name}");
 #end if
     JS::RootedValue retVal(cx, JS::ObjectOrNullValue(jsobj));
     args.rval().set(retVal);

@@ -50,7 +50,8 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
         ${namespaced_class_name}* cobj = new (std::nothrow) ${namespaced_class_name}($arg_list);
 
         js_type_class_t *typeClass = js_get_type_from_native<${namespaced_class_name}>(cobj);
-        JS::RootedObject jsobj(cx, jsb_ref_create_jsobject(cx, cobj, typeClass, "${namespaced_class_name}"));
+        JS::RootedObject jsobj(cx);
+        jsb_ref_create_jsobject(cx, cobj, typeClass, &jsobj, "${namespaced_class_name}");
         args.rval().set(JS::ObjectOrNullValue(jsobj));
         #else
             #if $ret_type.name != "void"

@@ -45,12 +45,14 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
         #if $func_name.startswith("create") and $is_ref_class
         auto ret = ${namespaced_class_name}::${func_name}($arg_list);
         js_type_class_t *typeClass = js_get_type_from_native<${namespaced_class_name}>(ret);
-        JS::RootedObject jsret(cx, jsb_ref_autoreleased_create_jsobject(cx, ret, typeClass, "${namespaced_class_name}"));
+        JS::RootedObject jsret(cx);
+        jsb_ref_autoreleased_create_jsobject(cx, ret, typeClass, &jsret, "${namespaced_class_name}");
         args.rval().set(JS::ObjectOrNullValue(jsret));
         #elif $func_name.startswith("getInstance") and $is_ref_class
         auto ret = ${namespaced_class_name}::${func_name}($arg_list);
         js_type_class_t *typeClass = js_get_type_from_native<${namespaced_class_name}>(ret);
-        JS::RootedObject jsret(cx, jsb_ref_get_or_create_jsobject(cx, ret, typeClass, "${namespaced_class_name}"));
+        JS::RootedObject jsret(cx);
+        jsb_ref_get_or_create_jsobject(cx, ret, typeClass, &jsret, "${namespaced_class_name}");
         args.rval().set(JS::ObjectOrNullValue(jsret));
         #else
           #if $ret_type.is_enum
