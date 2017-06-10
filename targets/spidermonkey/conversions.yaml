@@ -11,9 +11,8 @@ conversions:
   # the most common case would be from JS-boolean to bool. Using "bool" will fail here since we
   # pass the address to the conversion method, and a JSBool is defined as an integer in spidermonkey
   native_types:
-    float: "double"
     short: "int32_t"
-    "unsigned char": "uint16_t"
+    "unsigned char": "uint32_t"
     "char": "int32_t"
     "@std::vector<std::basic_string.*>.>.>": "std::vector<std::string>"
     "@std::vector<int.*>.>": "std::vector<int>"
@@ -30,14 +29,14 @@ conversions:
   to_native:
     # jsval to int
     int: "ok &= jsval_to_int32(cx, ${in_value}, (int32_t *)&${out_value})"
-    "unsigned int": "${out_value} = (uint32_t)(${in_value}.toInt32())"
-    "unsigned char": "${out_value} = (uint16_t)(${in_value}.toInt32())"
-    short: "${out_value} = ${in_value}.toInt32()"
-    "unsigned short": "${out_value} = (unsigned short)(${in_value}.toInt32())"
-    char: "${out_value} = ${in_value}.toInt32()"
-    bool: "${out_value} = ${in_value}.toBoolean()"
-    float: "${out_value} = (float)(${in_value}.toNumber())"
-    double: "${out_value} = ${in_value}.toDouble()"
+    "unsigned int": "ok &= jsval_to_int32(cx, ${in_value}, (int32_t *)&${out_value})"
+    "unsigned char": "ok &= jsval_to_int32(cx, ${in_value}, (int32_t *)&${out_value})"
+    short: "ok &= jsval_to_int32(cx, ${in_value}, (int32_t *)&${out_value})"
+    "unsigned short": "ok &= jsval_to_uint32(cx, ${in_value}, (uint32_t *)&${out_value})"
+    char: "ok &= jsval_to_int32(cx, ${in_value}, (int32_t *)&${out_value})"
+    bool: "ok &= jsval_to_bool(cx, ${in_value}, &${out_value})"
+    float: "ok &= jsval_to_float(cx, ${in_value}, &${out_value})"
+    double: "ok &= jsval_to_double(cx, ${in_value}, &${out_value})"
     long: "ok &= jsval_to_long(cx, ${in_value}, &${out_value})"
     "unsigned long": "ok &= jsval_to_ulong(cx, ${in_value}, &${out_value})"
     "ssize_t": "ok &= jsval_to_ssize(cx, ${in_value}, &${out_value})"
@@ -78,7 +77,7 @@ conversions:
     "NavMeshAgentParam": "ok &= jsval_to_NavMeshAgentParam(cx, ${in_value}, &${out_value})"
     "Physics3DRigidBodyDes*": "cocos2d::Physics3DRigidBodyDes tempObj;${out_value}=&tempObj;ok &= jsval_to_physics3DRigidBodyDes(cx, ${in_value}, ${out_value})"
     "TerrainData": "ok &= jsval_to_TerrainData(cx, ${in_value}, &${out_value})"
-    "TMXTileFlags_*": "uint32_t tempData; ${out_value}=(cocos2d::TMXTileFlags_*)&tempData; tempData = (uint32_t)(${in_value}.toInt32())"
+    "TMXTileFlags_*": "uint32_t tempData; ${out_value}=(cocos2d::TMXTileFlags_*)&tempData; ok &= jsval_to_uint32(cx, ${in_value}, &tempData)"
     "ResourceData": "ok &= jsval_to_resourcedata(cx, ${in_value}, &${out_value})"
     "_ttfConfig": "ok &= jsval_to_TTFConfig(cx, ${in_value}, &${out_value})"
     "TTFConfig": "ok &= jsval_to_TTFConfig(cx, ${in_value}, &${out_value})"

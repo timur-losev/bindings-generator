@@ -109,6 +109,6 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
         return true;
     }
 #end if
-    JS_ReportErrorUTF8(cx, "${signature_name} : wrong number of arguments");
+    JS_ReportErrorUTF8(cx, "${signature_name} : arguments error");
     return false;
 }
