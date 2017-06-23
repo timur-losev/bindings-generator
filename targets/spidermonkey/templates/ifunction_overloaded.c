@@ -66,6 +66,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
             jsb_ref_init(cx, obj, cobj, "${namespaced_class_name}");
             #else
             jsb_non_ref_init(cx, obj, cobj, "${namespaced_class_name}");
+            JS_SetPrivate(obj.get(), cobj);
             #end if
             jsb_new_proxy(cx, cobj, obj);
         #else

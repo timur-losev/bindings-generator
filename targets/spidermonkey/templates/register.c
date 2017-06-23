@@ -36,22 +36,9 @@ extern JSObject *jsb_${current_class.parents[0].underlined_class_name}_prototype
 #if has_finalize
 void js_${current_class.underlined_class_name}_finalize(JSFreeOp *fop, JSObject *obj) {
     CCLOGINFO("jsbindings: finalizing JS object %p (${current_class.class_name})", obj);
-    js_proxy_t* jsproxy;
-    JSContext *cx = ScriptingCore::getInstance()->getGlobalContext();
-    JS::RootedObject jsobj(cx, obj);
-    jsproxy = jsb_get_js_proxy(cx, jsobj);
-    if (jsproxy) {
-        ${current_class.namespaced_class_name} *nobj = static_cast<${current_class.namespaced_class_name} *>(jsproxy->ptr);
-        if (nobj) {
-            jsb_remove_proxy(jsproxy);
-            JS::RootedValue flagValue(cx);
-            JS_GetProperty(cx, jsobj, "__cppCreated", &flagValue);
-            if (flagValue.isNullOrUndefined()){
-                delete nobj;
-            }
-        }
-        else
-            jsb_remove_proxy(jsproxy);
+    ${current_class.namespaced_class_name} *nobj = static_cast<${current_class.namespaced_class_name} *>(JS_GetPrivate(obj));
+    if (nobj) {
+        CC_SAFE_DELETE(nobj);
     }
 }
 #end if

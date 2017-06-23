@@ -46,6 +46,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
     jsb_ref_create_jsobject(cx, cobj, typeClass, &jsobj, "${namespaced_class_name}");
 #else
     jsb_create_weak_jsobject(cx, cobj, typeClass, &jsobj, "${namespaced_class_name}");
+    JS_SetPrivate(jsobj.get(), cobj);
 #end if
     JS::RootedValue retVal(cx, JS::ObjectOrNullValue(jsobj));
     args.rval().set(retVal);
