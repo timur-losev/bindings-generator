@@ -38,14 +38,13 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
     #set $arg_list = ", ".join($arg_array)
     ${namespaced_class_name}* cobj = new (std::nothrow) ${namespaced_class_name}($arg_list);
 
-    js_type_class_t *typeClass = js_get_type_from_native<${namespaced_class_name}>(cobj);
-
     // create the js object and link the native object with the javascript object
     JS::RootedObject jsobj(cx);
+    JS::RootedObject proto(cx, jsb_${underlined_class_name}_prototype->get());
 #if $is_ref_class
-    jsb_ref_create_jsobject(cx, cobj, typeClass, &jsobj, "${namespaced_class_name}");
+    jsb_ref_create_jsobject(cx, cobj, jsb_${underlined_class_name}_class, proto, &jsobj, "${namespaced_class_name}");
 #else
-    jsb_create_weak_jsobject(cx, cobj, typeClass, &jsobj, "${namespaced_class_name}");
+    jsb_create_weak_jsobject(cx, cobj, jsb_${underlined_class_name}_class, proto, &jsobj, "${namespaced_class_name}");
     JS_SetPrivate(jsobj.get(), cobj);
 #end if
     JS::RootedValue retVal(cx, JS::ObjectOrNullValue(jsobj));

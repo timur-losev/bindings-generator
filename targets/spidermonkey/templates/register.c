@@ -30,7 +30,7 @@ ${current_class.methods.constructor.generate_code($current_class)}
 #end if
 
 #if len($current_class.parents) > 0
-extern JSObject *jsb_${current_class.parents[0].underlined_class_name}_prototype;
+extern JS::PersistentRootedObject *jsb_${current_class.parents[0].underlined_class_name}_prototype;
 
 #end if
 #if has_finalize
@@ -106,11 +106,11 @@ void js_register_${generator.prefix}_${current_class.class_name}(JSContext *cx, 
 #end if
 
 #if len($current_class.parents) > 0
-    JS::RootedObject parent_proto(cx, jsb_${current_class.parents[0].underlined_class_name}_prototype);
+    JS::RootedObject parent_proto(cx, jsb_${current_class.parents[0].underlined_class_name}_prototype->get());
 #else
     JS::RootedObject parent_proto(cx, nullptr);
 #end if
-    jsb_${current_class.underlined_class_name}_prototype = JS_InitClass(
+    JS::RootedObject proto(cx, JS_InitClass(
         cx, global,
         parent_proto,
         jsb_${current_class.underlined_class_name}_class,
@@ -133,12 +133,18 @@ void js_register_${generator.prefix}_${current_class.class_name}(JSContext *cx, 
 #end if
         nullptr,
 #if has_static_methods
-        st_funcs);
+        st_funcs));
 #else
-        nullptr);
+        nullptr));
 #end if
 
-    JS::RootedObject proto(cx, jsb_${current_class.underlined_class_name}_prototype);
+    // add the proto and JSClass to the type->js info hash table
+#if len($current_class.parents) > 0
+    js_type_class_t *typeClass = jsb_register_class<${current_class.namespaced_class_name}>(cx, jsb_${current_class.underlined_class_name}_class, proto);
+#else
+    js_type_class_t *typeClass = jsb_register_class<${current_class.namespaced_class_name}>(cx, jsb_${current_class.underlined_class_name}_class, proto);
+#end if
+    jsb_${current_class.underlined_class_name}_prototype = typeClass->proto;
     JS::RootedValue className(cx);
     std_string_to_jsval(cx, "${current_class.class_name}", &className);
     JS_SetProperty(cx, proto, "_className", className);
@@ -147,12 +153,6 @@ void js_register_${generator.prefix}_${current_class.class_name}(JSContext *cx, 
     JS_SetProperty(cx, proto, "__is_ref", JS::TrueHandleValue);
 #else
     JS_SetProperty(cx, proto, "__is_ref", JS::FalseHandleValue);
-#end if
-    // add the proto and JSClass to the type->js info hash table
-#if len($current_class.parents) > 0
-    jsb_register_class<${current_class.namespaced_class_name}>(cx, jsb_${current_class.underlined_class_name}_class, proto);
-#else
-    jsb_register_class<${current_class.namespaced_class_name}>(cx, jsb_${current_class.underlined_class_name}_class, proto);
 #end if
 #if $generator.in_listed_extend_classed($current_class.class_name) and not $current_class.is_abstract
     make_class_extend(cx, proto);

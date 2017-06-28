@@ -58,9 +58,8 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
             cobj = new (std::nothrow) ${namespaced_class_name}(${arg_list});
 
             #if not $is_ctor
-            js_type_class_t *typeClass = js_get_type_from_native<${namespaced_class_name}>(cobj);
-            JS::RootedObject proto(cx, typeClass->proto->get());
-            obj = JS_NewObjectWithGivenProto(cx, typeClass->jsclass, proto);
+            JS::RootedObject proto(cx, jsb_${underlined_class_name}_prototype->get());
+            obj = JS_NewObjectWithGivenProto(cx, jsb_${underlined_class_name}_class, proto);
             #end if
             #if $is_ref_class
             jsb_ref_init(cx, obj, cobj, "${namespaced_class_name}");
