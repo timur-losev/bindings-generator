@@ -1,9 +1,7 @@
 ## ===== instance function implementation template - for overloaded functions
-bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
+bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 {
-    #if $is_constructor
     bool ok = true;
-    #end if
     ${namespaced_class_name}* cobj = nullptr;
 
 #if not $is_ctor   
@@ -16,7 +14,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
 #end if
 #if not $is_constructor
     obj.set(args.thisv().toObjectOrNull());
-    js_proxy_t *proxy = jsb_get_js_proxy(obj);
+    js_proxy_t *proxy = jsb_get_js_proxy(cx, obj);
     cobj = (${namespaced_class_name} *)(proxy ? proxy->ptr : nullptr);
     JSB_PRECONDITION2( cobj, cx, false, "${signature_name} : Invalid Native Object");
 #end if
@@ -28,12 +26,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
     #set arg_list = ""
     #set arg_array = []
     do {
-        #if not $is_constructor and $arg_idx > 0
-        bool ok = true;
-        #end if
-        #if $is_constructor
         ok = true;
-        #end if
         #if $func.min_args >= 0
         if (argc == $arg_idx) {
             #set $count = 0
@@ -65,17 +58,16 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
             cobj = new (std::nothrow) ${namespaced_class_name}(${arg_list});
 
             #if not $is_ctor
-            js_type_class_t *typeClass = js_get_type_from_native<${namespaced_class_name}>(cobj);
-            JS::RootedObject proto(cx, typeClass->proto.ref());
-            JS::RootedObject parent(cx, typeClass->parentProto.ref());
-            obj = JS_NewObject(cx, typeClass->jsclass, proto, parent);
+            JS::RootedObject proto(cx, jsb_${underlined_class_name}_prototype->get());
+            obj = JS_NewObjectWithGivenProto(cx, jsb_${underlined_class_name}_class, proto);
             #end if
-            js_proxy_t* p = jsb_new_proxy(cobj, obj);
             #if $is_ref_class
-            jsb_ref_init(cx, &p->obj, cobj, "${namespaced_class_name}");
+            jsb_ref_init(cx, obj, cobj, "${namespaced_class_name}");
             #else
-            jsb_non_ref_init(cx, &p->obj, cobj, "${namespaced_class_name}");
+            jsb_non_ref_init(cx, obj, cobj, "${namespaced_class_name}");
+            JS_SetPrivate(obj.get(), cobj);
             #end if
+            jsb_new_proxy(cx, cobj, obj);
         #else
             #if str($func.ret_type) != "void"
                 #if $func.ret_type.is_enum
@@ -83,12 +75,13 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
                 #else
             ${func.ret_type.get_whole_name($generator)} ret = cobj->${func.func_name}($arg_list);
                 #end if
-            jsval jsret = JSVAL_NULL;
+            JS::RootedValue jsret(cx, JS::NullHandleValue);
             ${func.ret_type.from_native({"generator": $generator,
                                                       "in_value": "ret",
                                                       "out_value": "jsret",
                                                       "ntype": str($func.ret_type),
                                                       "level": 2})};
+            JSB_PRECONDITION2(ok, cx, false, "${signature_name} : error parsing return value");
             args.rval().set(jsret);
             #else
             cobj->${func.func_name}($arg_list);
@@ -104,14 +97,18 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
 #end if
 #end for
 #if $is_constructor
-    if (cobj) {
+    if (cobj)
+    {
+        JS::RootedValue objVal(cx, JS::ObjectOrNullValue(obj));
         if (JS_HasProperty(cx, obj, "_ctor", &ok) && ok)
-                ScriptingCore::getInstance()->executeFunctionWithOwner(OBJECT_TO_JSVAL(obj), "_ctor", args);
-
-        args.rval().set(OBJECT_TO_JSVAL(obj));
+        {
+            JS::HandleValueArray argsv(args);
+            ScriptingCore::getInstance()->executeFunctionWithOwner(objVal, "_ctor", argsv);
+        }
+        args.rval().set(objVal);
         return true;
     }
 #end if
-    JS_ReportError(cx, "${signature_name} : wrong number of arguments");
+    JS_ReportErrorUTF8(cx, "${signature_name} : arguments error");
     return false;
 }

@@ -1,5 +1,5 @@
 ## ===== ctor function implementation template
-static bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
+static bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
     JS::RootedObject obj(cx, args.thisv().toObjectOrNull());
@@ -40,15 +40,19 @@ static bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
     #end if
     #set $arg_list = ", ".join($arg_array)
     ${namespaced_class_name} *nobj = new (std::nothrow) ${namespaced_class_name}($arg_list);
-    js_proxy_t* p = jsb_new_proxy(nobj, obj);
 #if $is_ref_class
-    jsb_ref_init(cx, &p->obj, nobj, "${namespaced_class_name}");
+    jsb_ref_init(cx, obj, nobj, "${namespaced_class_name}");
 #else
-    AddNamedObjectRoot(cx, &p->obj, "${namespaced_class_name}");
+    AddNamedObjectRoot(cx, obj, "${namespaced_class_name}");
 #end if
+    jsb_new_proxy(cx, nobj, obj);
     bool isFound = false;
     if (JS_HasProperty(cx, obj, "_ctor", &isFound) && isFound)
-        ScriptingCore::getInstance()->executeFunctionWithOwner(OBJECT_TO_JSVAL(obj), "_ctor", args);
+    {
+        JS::HandleValueArray argsv(args);
+        JS::RootedValue objVal(cx, JS::ObjectOrNullValue(obj));
+        ScriptingCore::getInstance()->executeFunctionWithOwner(objVal, "_ctor", argsv);
+    }
     args.rval().setUndefined();
     return true;
 #end if

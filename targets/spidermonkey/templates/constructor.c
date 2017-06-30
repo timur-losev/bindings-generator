@@ -1,5 +1,5 @@
 ## ===== constructor function implementation template
-bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
+bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
     bool ok = true;
@@ -38,17 +38,22 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
     #set $arg_list = ", ".join($arg_array)
     ${namespaced_class_name}* cobj = new (std::nothrow) ${namespaced_class_name}($arg_list);
 
-    js_type_class_t *typeClass = js_get_type_from_native<${namespaced_class_name}>(cobj);
-
-    // link the native object with the javascript object
+    // create the js object and link the native object with the javascript object
+    JS::RootedObject jsobj(cx);
+    JS::RootedObject proto(cx, jsb_${underlined_class_name}_prototype->get());
 #if $is_ref_class
-    JS::RootedObject jsobj(cx, jsb_ref_create_jsobject(cx, cobj, typeClass, "${namespaced_class_name}"));
+    jsb_ref_create_jsobject(cx, cobj, jsb_${underlined_class_name}_class, proto, &jsobj, "${namespaced_class_name}");
 #else
-    JS::RootedObject jsobj(cx, jsb_create_weak_jsobject(cx, cobj, typeClass, "${namespaced_class_name}"));
+    jsb_create_weak_jsobject(cx, cobj, jsb_${underlined_class_name}_class, proto, &jsobj, "${namespaced_class_name}");
+    JS_SetPrivate(jsobj.get(), cobj);
 #end if
-    args.rval().set(OBJECT_TO_JSVAL(jsobj));
-    if (JS_HasProperty(cx, jsobj, "_ctor", &ok) && ok)
-        ScriptingCore::getInstance()->executeFunctionWithOwner(OBJECT_TO_JSVAL(jsobj), "_ctor", args);
+    JS::RootedValue retVal(cx, JS::ObjectOrNullValue(jsobj));
+    args.rval().set(retVal);
+    if (JS_HasProperty(cx, jsobj, "_ctor", &ok) && ok) 
+    {
+        JS::HandleValueArray argsv(args);
+        ScriptingCore::getInstance()->executeFunctionWithOwner(retVal, "_ctor", argsv);
+    }
     return true;
 #end if
 }

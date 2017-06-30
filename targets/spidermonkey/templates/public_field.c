@@ -1,12 +1,13 @@
 ## ===== member implementation template
-bool ${signature_name}_get_${name}(JSContext *cx, uint32_t argc, jsval *vp)
+bool ${signature_name}_get_${name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
     JS::RootedObject jsthis(cx, args.thisv().toObjectOrNull());
-    js_proxy_t *proxy = jsb_get_js_proxy(jsthis);
+    js_proxy_t *proxy = jsb_get_js_proxy(cx, jsthis);
     ${namespaced_class_name}* cobj = (${namespaced_class_name} *)(proxy ? proxy->ptr : NULL);
     JSB_PRECONDITION2( cobj, cx, false, "${signature_name}_get_${name} : Invalid Native Object");
 
+    bool ok = true;
     JS::RootedValue jsret(cx);
     #if $ntype.is_object and not $ntype.object_can_convert($generator, False)
     ${ntype.from_native({"generator": $generator,
@@ -26,14 +27,15 @@ bool ${signature_name}_get_${name}(JSContext *cx, uint32_t argc, jsval *vp)
                          "out_value": "jsret"
                          })};
     #end if
+    JSB_PRECONDITION2(ok, cx, false, "${signature_name}_get_${name} : error parsing return value");
     args.rval().set(jsret);
     return true;
 }
-bool ${signature_name}_set_${name}(JSContext *cx, uint32_t argc, jsval *vp)
+bool ${signature_name}_set_${name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
     JS::RootedObject jsthis(cx, args.thisv().toObjectOrNull());
-    js_proxy_t *proxy = jsb_get_js_proxy(jsthis);
+    js_proxy_t *proxy = jsb_get_js_proxy(cx, jsthis);
     ${namespaced_class_name}* cobj = (${namespaced_class_name} *)(proxy ? proxy->ptr : NULL);
     JSB_PRECONDITION2( cobj, cx, false, "${signature_name}_set_${name} : Invalid Native Object");
 

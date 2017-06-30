@@ -1,13 +1,13 @@
 ## ===== instance function implementation template
-bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
+bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-#if len($arguments) > 0
-    bool ok = true;
+#if len($arguments) > 0 or $ret_type.name != "void"
+    bool ok = true; CC_UNUSED_PARAM(ok);
 #end if
 #if not $is_constructor
     JS::RootedObject obj(cx, args.thisv().toObjectOrNull());
-    js_proxy_t *proxy = jsb_get_js_proxy(obj);
+    js_proxy_t *proxy = jsb_get_js_proxy(cx, obj);
     ${namespaced_class_name}* cobj = (${namespaced_class_name} *)(proxy ? proxy->ptr : NULL);
     JSB_PRECONDITION2( cobj, cx, false, "${signature_name} : Invalid Native Object");
 #end if
@@ -49,9 +49,10 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
         #if $is_constructor
         ${namespaced_class_name}* cobj = new (std::nothrow) ${namespaced_class_name}($arg_list);
 
-        js_type_class_t *typeClass = js_get_type_from_native<${namespaced_class_name}>(cobj);
-        JS::RootedObject jsobj(cx, jsb_ref_create_jsobject(cx, cobj, typeClass, "${namespaced_class_name}"));
-        args.rval().set(OBJECT_TO_JSVAL(jsobj));
+        JS::RootedObject jsobj(cx);
+        JS::RootedObject proto(cx, jsb_${underlined_class_name}_prototype->get());
+        jsb_ref_create_jsobject(cx, cobj, jsb_${underlined_class_name}_class, proto, &jsobj, "${namespaced_class_name}");
+        args.rval().set(JS::ObjectOrNullValue(jsobj));
         #else
             #if $ret_type.name != "void"
                 #if $ret_type.is_enum
@@ -65,6 +66,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
                                     "out_value": "jsret",
                                     "ntype": str($ret_type),
                                     "level": 2})};
+        JSB_PRECONDITION2(ok, cx, false, "${signature_name} : error parsing return value");
         args.rval().set(jsret);
             #else
         cobj->${func_name}($arg_list);
@@ -77,6 +79,6 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
     #end while
 #end if
 
-    JS_ReportError(cx, "${signature_name} : wrong number of arguments: %d, was expecting %d", argc, ${min_args});
+    JS_ReportErrorUTF8(cx, "${signature_name} : wrong number of arguments: %d, was expecting %d", argc, ${min_args});
     return false;
 }

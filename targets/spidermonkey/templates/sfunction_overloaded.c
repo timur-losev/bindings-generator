@@ -1,5 +1,5 @@
 ## ===== static function implementation template - for overloaded functions
-bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
+bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
     #for func in $implementations
@@ -9,8 +9,8 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
     #set arg_idx = $func.min_args
     #while $arg_idx <= $arg_count
     do {
-        #if $arg_idx > 0
-        bool ok = true;
+        #if $arg_idx > 0 or str($func.ret_type) != "void"
+        bool ok = true; CC_UNUSED_PARAM(ok);
         #end if
         if (argc == ${arg_idx}) {
             #set arg_list = ""
@@ -44,12 +44,13 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
                 #else
             ${func.ret_type.get_whole_name($generator)} ret = ${namespaced_class_name}::${func.func_name}($arg_list);
                 #end if
-            jsval jsret = JSVAL_NULL;
+            JS::RootedValue jsret(cx, JS::NullHandleValue);
             ${func.ret_type.from_native({"generator": $generator,
                                          "in_value": "ret",
                                          "out_value": "jsret",
                                          "ntype": str($func.ret_type),
                                          "level": 3})};
+            JSB_PRECONDITION2(ok, cx, false, "${signature_name} : error parsing return value");
             args.rval().set(jsret);
             #else
             ${namespaced_class_name}::${func.func_name}($arg_list);
@@ -61,6 +62,6 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
     #end while
     #end if
     #end for
-    JS_ReportError(cx, "${signature_name} : wrong number of arguments");
+    JS_ReportErrorUTF8(cx, "${signature_name} : wrong number of arguments");
     return false;
 }
