@@ -33,10 +33,10 @@ static bool js_${current_class.underlined_class_name}_finalize(se::State& s)
         cobj->release();
     #else
         #if not $current_class.is_class_owned_by_cpp
-    auto iter = se::__nonRefNativeObjectCreatedByCtorMap.find(s.nativeThisObject());
-    if (iter != se::__nonRefNativeObjectCreatedByCtorMap.end())
+    auto iter = se::NonRefNativePtrCreatedByCtorMap::find(s.nativeThisObject());
+    if (iter != se::NonRefNativePtrCreatedByCtorMap::end())
     {
-        se::__nonRefNativeObjectCreatedByCtorMap.erase(iter);
+        se::NonRefNativePtrCreatedByCtorMap::erase(iter);
         ${current_class.namespaced_class_name}* cobj = (${current_class.namespaced_class_name}*)s.nativeThisObject();
         delete cobj;
     }

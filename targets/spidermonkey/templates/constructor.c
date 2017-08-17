@@ -45,7 +45,7 @@ static bool ${signature_name}(se::State& s)
     ${namespaced_class_name}* cobj = new (std::nothrow) ${namespaced_class_name}($arg_list);
     s.thisObject()->setPrivateData(cobj);
     #if not $is_ref_class
-    se::__nonRefNativeObjectCreatedByCtorMap.emplace(cobj, true);
+    se::NonRefNativePtrCreatedByCtorMap::emplace(cobj);
     #end if
 #end if
     return true;
