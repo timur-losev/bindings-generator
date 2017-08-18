@@ -1,17 +1,15 @@
 ## ===== member implementation template
-bool ${signature_name}_get_${name}(JSContext *cx, uint32_t argc, JS::Value *vp)
-{
-    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-    JS::RootedObject jsthis(cx, args.thisv().toObjectOrNull());
-    js_proxy_t *proxy = jsb_get_js_proxy(cx, jsthis);
-    ${namespaced_class_name}* cobj = (${namespaced_class_name} *)(proxy ? proxy->ptr : NULL);
-    JSB_PRECONDITION2( cobj, cx, false, "${signature_name}_get_${name} : Invalid Native Object");
 
-    bool ok = true;
-    JS::RootedValue jsret(cx);
+static bool ${signature_name}_get_${name}(se::State& s)
+{
+    ${namespaced_class_name}* cobj = (${namespaced_class_name}*)s.nativeThisObject();
+    SE_PRECONDITION2(cobj, false, "${signature_name}_get_${name} : Invalid Native Object");
+
+    CC_UNUSED bool ok = true;
+    se::Value jsret;
     #if $ntype.is_object and not $ntype.object_can_convert($generator, False)
     ${ntype.from_native({"generator": $generator,
-                         "type_name": $ntype.namespaced_name.replace("*", ""),
+                         "type_name": $ntype.namespaced_class_name.replace("*", ""),
                          "ntype": $ntype.get_whole_name($generator),
                          "level": 2,
                          "in_value": "cobj->" + $pretty_name,
@@ -19,27 +17,26 @@ bool ${signature_name}_get_${name}(JSContext *cx, uint32_t argc, JS::Value *vp)
                         })};
     #else
     ${ntype.from_native({"generator": $generator,
-                         "type_name": $ntype.namespaced_name.replace("*", ""),
+                         "type_name": $ntype.namespaced_class_name.replace("*", ""),
                          "ntype": $ntype.get_whole_name($generator),
                          "level": 2,
-                         "scriptname": $generator.scriptname_from_native($ntype.namespaced_name, $ntype.namespace_name),
+                         "scriptname": $generator.scriptname_from_native($ntype.namespaced_class_name, $ntype.namespace_name),
                          "in_value":"cobj->" + $pretty_name,
                          "out_value": "jsret"
                          })};
     #end if
-    JSB_PRECONDITION2(ok, cx, false, "${signature_name}_get_${name} : error parsing return value");
-    args.rval().set(jsret);
+    s.rval() = jsret;
     return true;
 }
-bool ${signature_name}_set_${name}(JSContext *cx, uint32_t argc, JS::Value *vp)
-{
-    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-    JS::RootedObject jsthis(cx, args.thisv().toObjectOrNull());
-    js_proxy_t *proxy = jsb_get_js_proxy(cx, jsthis);
-    ${namespaced_class_name}* cobj = (${namespaced_class_name} *)(proxy ? proxy->ptr : NULL);
-    JSB_PRECONDITION2( cobj, cx, false, "${signature_name}_set_${name} : Invalid Native Object");
+SE_BIND_PROP_GET(${signature_name}_get_${name})
 
-    bool ok = true;
+static bool ${signature_name}_set_${name}(se::State& s)
+{
+    const auto& args = s.args();
+    ${namespaced_class_name}* cobj = (${namespaced_class_name}*)s.nativeThisObject();
+    SE_PRECONDITION2(cobj, false, "${signature_name}_set_${name} : Invalid Native Object");
+
+    CC_UNUSED bool ok = true;
 #if $ntype.is_numeric
     ${ntype.to_string($generator)} arg0 = 0;
 #elif $ntype.is_pointer
@@ -51,7 +48,7 @@ bool ${signature_name}_set_${name}(JSContext *cx, uint32_t argc, JS::Value *vp)
     ${ntype.to_native({"generator": $generator,
                         "arg_idx": 2,
                         "ntype": $ntype.get_whole_name($generator),
-                        "in_value": "args.get(0)",
+                        "in_value": "args[0]",
                         "out_value": "arg0",
                         "func_name": $name,
                         "level": 2,
@@ -60,15 +57,16 @@ bool ${signature_name}_set_${name}(JSContext *cx, uint32_t argc, JS::Value *vp)
 #else
     ${ntype.to_native({"generator": $generator,
                         "arg_idx": 2,
-                        "in_value": "args.get(0)",
+                        "in_value": "args[0]",
                         "out_value": "arg0",
                         "func_name": $name,
-                        "scriptname": $generator.scriptname_from_native($ntype.namespaced_name, $ntype.namespace_name),
+                        "scriptname": $generator.scriptname_from_native($ntype.namespaced_class_name, $ntype.namespace_name),
                         "level": 2,
                         "arg":$ntype,
                     })};
 #end if
-    JSB_PRECONDITION2(ok, cx, false, "${signature_name}_set_${name} : Error processing new value");
+    SE_PRECONDITION2(ok, false, "${signature_name}_set_${name} : Error processing new value");
     cobj->$pretty_name = arg0;
     return true;
 }
+SE_BIND_PROP_SET(${signature_name}_set_${name})

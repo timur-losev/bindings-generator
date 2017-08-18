@@ -2,7 +2,7 @@
 #if $macro_judgement
 $macro_judgement
 #end if
-\#include "scripting/js-bindings/manual/cocos2d_specifics.hpp"
+\#include "scripting/js-bindings/manual/jsb_conversions.hpp"
 #for header in $headers
     #set include_header = os.path.basename(header)
     #if $replace_headers.has_key(include_header)

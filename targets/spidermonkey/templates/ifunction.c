@@ -1,19 +1,17 @@
 ## ===== instance function implementation template
-bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
+
+static bool ${signature_name}(se::State& s)
 {
-    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-#if len($arguments) > 0 or $ret_type.name != "void"
-    bool ok = true; CC_UNUSED_PARAM(ok);
-#end if
-#if not $is_constructor
-    JS::RootedObject obj(cx, args.thisv().toObjectOrNull());
-    js_proxy_t *proxy = jsb_get_js_proxy(cx, obj);
-    ${namespaced_class_name}* cobj = (${namespaced_class_name} *)(proxy ? proxy->ptr : NULL);
-    JSB_PRECONDITION2( cobj, cx, false, "${signature_name} : Invalid Native Object");
-#end if
+    ${namespaced_class_name}* cobj = (${namespaced_class_name}*)s.nativeThisObject();
+    SE_PRECONDITION2(cobj, false, "${signature_name} : Invalid Native Object");
 #if len($arguments) >= $min_args
+    const auto& args = s.args();
+    size_t argc = args.size();
     #set arg_count = len($arguments)
     #set arg_idx = $min_args
+    #if $arg_count > 0 or $ret_type.name != "void"
+    CC_UNUSED bool ok = true;
+    #end if
     #while $arg_idx <= $arg_count
     if (argc == ${arg_idx}) {
         #set $count = 0
@@ -34,51 +32,42 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, JS::Value *vp)
         #while $count < $arg_idx
             #set $arg = $arguments[$count]
         ${arg.to_native({"generator": $generator,
-                             "in_value": "args.get(" + str(count) + ")",
+                             "in_value": "args[" + str(count) + "]",
                              "out_value": "arg" + str(count),
                              "class_name": $class_name,
                              "level": 2,
+                             "is_static": False,
+                             "is_persistent": $is_persistent,
                              "ntype": str($arg)})};
             #set $arg_array += ["arg"+str(count)]
             #set $count = $count + 1
         #end while
         #if $arg_idx > 0
-        JSB_PRECONDITION2(ok, cx, false, "${signature_name} : Error processing arguments");
+        SE_PRECONDITION2(ok, false, "${signature_name} : Error processing arguments");
         #end if
         #set $arg_list = ", ".join($arg_array)
-        #if $is_constructor
-        ${namespaced_class_name}* cobj = new (std::nothrow) ${namespaced_class_name}($arg_list);
-
-        JS::RootedObject jsobj(cx);
-        JS::RootedObject proto(cx, jsb_${underlined_class_name}_prototype->get());
-        jsb_ref_create_jsobject(cx, cobj, jsb_${underlined_class_name}_class, proto, &jsobj, "${namespaced_class_name}");
-        args.rval().set(JS::ObjectOrNullValue(jsobj));
-        #else
-            #if $ret_type.name != "void"
-                #if $ret_type.is_enum
-        int ret = (int)cobj->${func_name}($arg_list);
-                #else
-        ${ret_type.get_whole_name($generator)} ret = cobj->${func_name}($arg_list);
-                #end if
-        JS::RootedValue jsret(cx);
+        #if $ret_type.name != "void"
+            #if $ret_type.is_enum
+        int result = (int)cobj->${func_name}($arg_list);
+            #else
+        ${ret_type.get_whole_name($generator)} result = cobj->${func_name}($arg_list);
+            #end if
         ${ret_type.from_native({"generator": $generator,
-                                    "in_value": "ret",
-                                    "out_value": "jsret",
+                                    "in_value": "result",
+                                    "out_value": "s.rval()",
+                                    "class_name": $ret_type.get_class_name($generator),
                                     "ntype": str($ret_type),
                                     "level": 2})};
-        JSB_PRECONDITION2(ok, cx, false, "${signature_name} : error parsing return value");
-        args.rval().set(jsret);
-            #else
+        SE_PRECONDITION2(ok, false, "${signature_name} : Error processing arguments");
+        #else
         cobj->${func_name}($arg_list);
-        args.rval().setUndefined();
-            #end if
         #end if
         return true;
     }
         #set $arg_idx = $arg_idx + 1
     #end while
+    SE_REPORT_ERROR("wrong number of arguments: %d, was expecting %d", (int)argc, $arg_count);
 #end if
-
-    JS_ReportErrorUTF8(cx, "${signature_name} : wrong number of arguments: %d, was expecting %d", argc, ${min_args});
     return false;
 }
+SE_BIND_FUNC(${signature_name})
