@@ -59,7 +59,7 @@ static bool ${signature_name}(se::State& s)
         s.rval() = instanceVal;
         #else
           #if $ret_type.is_enum
-        int result = (int)${namespaced_class_name}::${func_name}($arg_list);
+        $ret_type.enum_declare_type result = ($ret_type.enum_declare_type)${namespaced_class_name}::${func_name}($arg_list);
           #else
         ${ret_type.get_whole_name($generator)} result = ${namespaced_class_name}::${func_name}($arg_list);
           #end if

@@ -20,8 +20,8 @@ type_map = {
     cindex.TypeKind.BOOL        : "bool",
     cindex.TypeKind.CHAR_U      : "unsigned char",
     cindex.TypeKind.UCHAR       : "unsigned char",
-    cindex.TypeKind.CHAR16      : "char",
-    cindex.TypeKind.CHAR32      : "char",
+    cindex.TypeKind.CHAR16      : "char16_t",
+    cindex.TypeKind.CHAR32      : "char32_t",
     cindex.TypeKind.USHORT      : "unsigned short",
     cindex.TypeKind.UINT        : "unsigned int",
     cindex.TypeKind.ULONG       : "unsigned long",
@@ -40,7 +40,6 @@ type_map = {
     cindex.TypeKind.OBJCID      : "id",
     cindex.TypeKind.OBJCCLASS   : "class",
     cindex.TypeKind.OBJCSEL     : "SEL",
-    # cindex.TypeKind.ENUM        : "int"
 }
 
 four_space = "    "
@@ -155,6 +154,8 @@ class NativeType(object):
         self.is_object = False
         self.is_function = False
         self.is_enum = False
+        self.enum_kind = cindex.TypeKind.INVALID
+        self.enum_declare_type = ""
         self.is_numeric = False
         self.not_supported = False
         self.param_types = []
@@ -242,6 +243,13 @@ class NativeType(object):
                             return ret
 
                 nt.is_enum = ntype.get_canonical().kind == cindex.TypeKind.ENUM
+                if nt.is_enum:
+                    nt.enum_kind = cdecl.enum_type.kind
+                    if type_map.has_key(nt.enum_kind):
+                        nt.enum_declare_type = type_map[nt.enum_kind]
+                    else:
+                        raise TypeError("Can't find (" + str(nt.enum_kind) + ") in type_map")
+                    print("==> enum kind: " + nt.namespaced_class_name + ": " + str(cdecl.enum_type.kind))
 
                 if nt.name == "std::function":
                     nt.namespaced_class_name = get_namespaced_class_name(cdecl)
@@ -331,10 +339,10 @@ class NativeType(object):
         keys.append(self.name)
 
         class_name = self.name.replace('*', '').replace('const ', '')
-        if class_name in self.generator.classes_owned_by_cpp:
-            print("cpp control: from_native: self.name: " + self.name)
-        else:
-            print("js control: from_native: self.name: " + self.name)            
+        # if class_name in self.generator.classes_owned_by_cpp:
+        #     print("cpp control: from_native: self.name: " + self.name)
+        # else:
+        #     print("js control: from_native: self.name: " + self.name)            
 
         from_native_dict = generator.config['conversions']['from_native']
 
@@ -345,7 +353,7 @@ class NativeType(object):
                 else:
                     keys.append("object")
         elif self.is_enum:
-            keys.append("int")
+            keys.append(self.enum_declare_type)
 
         if NativeType.dict_has_key_re(from_native_dict, keys):
             tpl = NativeType.dict_get_value_re(from_native_dict, keys)
@@ -368,7 +376,7 @@ class NativeType(object):
             if not NativeType.dict_has_key_re(to_native_dict, keys):
                 keys.append("object")
         elif self.is_enum:
-            keys.append("int")
+            keys.append(self.enum_declare_type)
 
         if self.is_function:
             tpl = Template(file=os.path.join(generator.target, "templates", "lambda.c"),
@@ -761,7 +769,7 @@ class NativeClass(object):
         self.is_abstract = self.class_name in generator.abstract_classes
         self.is_persistent = self.class_name in generator.persistent_classes
         self.is_class_owned_by_cpp = self.class_name in self.generator.classes_owned_by_cpp
-        print("class_name:" + self.class_name + ", is_class_owned_by_cpp:" + str(self.is_class_owned_by_cpp))
+        # print("class_name:" + self.class_name + ", is_class_owned_by_cpp:" + str(self.is_class_owned_by_cpp))
         self._current_visibility = cindex.AccessSpecifierKind.PRIVATE
         #for generate lua api doc
         self.override_methods = {}
