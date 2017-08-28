@@ -41,7 +41,7 @@ static bool ${signature_name}(se::State& s)
             #set $arg_list = ", ".join($arg_array)
             #if str($func.ret_type) != "void"
                 #if $func.ret_type.is_enum
-            int result = (int)${namespaced_class_name}::${func.func_name}($arg_list);
+            $ret_type.enum_declare_type result = ($ret_type.enum_declare_type)${namespaced_class_name}::${func.func_name}($arg_list);
                 #else
             ${func.ret_type.get_whole_name($generator)} result = ${namespaced_class_name}::${func.func_name}($arg_list);
                 #end if

@@ -29,12 +29,12 @@ conversions:
     "CocosDenshion::": "cc."
   to_native:
     # jsval to int
-    int: "ok &= seval_to_int32(${in_value}, (int32_t *)&${out_value})"
-    "unsigned int": "ok &= seval_to_uint32(${in_value}, &${out_value})"
-    "unsigned char": "ok &= seval_to_uint8(${in_value}, &${out_value})"
+    int: "ok &= seval_to_int32(${in_value}, (int32_t*)&${out_value})"
+    "unsigned int": "ok &= seval_to_uint32(${in_value}, (uint32_t*)&${out_value})"
+    "unsigned char": "ok &= seval_to_uint8(${in_value}, (uint8_t*)&${out_value})"
     short: "ok &= seval_to_int16(${in_value}, &${out_value})"
     "unsigned short": "ok &= seval_to_uint16(${in_value}, &${out_value})"
-    char: "ok &= seval_to_int8(${in_value}, &${out_value})"
+    char: "ok &= seval_to_int8(${in_value}, (int8_t*)&${out_value})"
     bool: "ok &= seval_to_boolean(${in_value}, &${out_value})"
     float: "ok &= seval_to_float(${in_value}, &${out_value})"
     double: "ok &= seval_to_double(${in_value}, &${out_value})"
