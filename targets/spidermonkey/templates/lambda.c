@@ -6,7 +6,7 @@ do {
         #if $is_static or $is_persistent
         jsFunc.toObject()->root();
         #else
-        jsThis.toObject()->attachChild(jsFunc.toObject());
+        jsThis.toObject()->attachObject(jsFunc.toObject());
         #end if
         auto lambda = [=](${lambda_parameters}) -> ${ret_type.name} {
             se::ScriptEngine::getInstance()->clearException();
