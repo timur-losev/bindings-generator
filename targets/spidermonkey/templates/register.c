@@ -91,7 +91,7 @@ bool js_register_${generator.prefix}_${current_class.class_name}(se::Object* obj
     __jsb_${current_class.underlined_class_name}_class = cls;
 
 #if $generator.in_listed_extend_classed($current_class.class_name) and not $current_class.is_abstract
-    se::ScriptEngine::getInstance()->executeScriptBuffer("(function () { ${generator.target_ns}.${current_class.target_class_name}.extend = cc.Class.extend; })()");
+    se::ScriptEngine::getInstance()->evalString("(function () { ${generator.target_ns}.${current_class.target_class_name}.extend = cc.Class.extend; })()");
 #end if
     se::ScriptEngine::getInstance()->clearException();
     return true;
