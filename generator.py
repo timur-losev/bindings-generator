@@ -249,7 +249,7 @@ class NativeType(object):
                         nt.enum_declare_type = type_map[nt.enum_kind]
                     else:
                         raise TypeError("Can't find (" + str(nt.enum_kind) + ") in type_map")
-                    print("==> enum kind: " + nt.namespaced_class_name + ": " + str(cdecl.enum_type.kind))
+                    # print("==> enum kind: " + nt.namespaced_class_name + ": " + str(cdecl.enum_type.kind))
 
                 if nt.name == "std::function":
                     nt.namespaced_class_name = get_namespaced_class_name(cdecl)
