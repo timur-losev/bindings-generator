@@ -3,6 +3,7 @@
 $macro_judgement
 #end if
 \#include "scripting/js-bindings/manual/jsb_conversions.hpp"
+\#include "scripting/js-bindings/manual/jsb_global.h"
 #for header in $headers
     #set include_header = os.path.basename(header)
     #if $replace_headers.has_key(include_header)
