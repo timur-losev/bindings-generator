@@ -24,7 +24,7 @@ extern se::Object* __jsb_${current_class.parents[0].underlined_class_name}_proto
 #if not $current_class.is_abstract
 static bool js_${current_class.underlined_class_name}_finalize(se::State& s)
 {
-    CCLOG("jsbindings: finalizing JS object %p (${current_class.namespaced_class_name})", s.nativeThisObject());
+    CCLOGINFO("jsbindings: finalizing JS object %p (${current_class.namespaced_class_name})", s.nativeThisObject());
     #if $current_class.is_ref_class
     ${current_class.namespaced_class_name}* cobj = (${current_class.namespaced_class_name}*)s.nativeThisObject();
     if (cobj->getReferenceCount() == 1)
