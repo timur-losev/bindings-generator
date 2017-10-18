@@ -240,6 +240,8 @@ class NativeType(object):
                         if ret.name != "":
                             if decl.kind == cindex.CursorKind.TYPEDEF_DECL:
                                 ret.canonical_type = nt
+                                if nt.name == 'va_list':
+                                    ret.not_supported = True
                             return ret
 
                 nt.is_enum = ntype.get_canonical().kind == cindex.TypeKind.ENUM
@@ -1146,7 +1148,7 @@ class Generator(object):
                                     print "%s will skip method %s" % (class_name, method_name)
                                 return True
         if verbose:
-            print "%s will be accepted (%s, %s)" % (class_name, key, self.skip_classes[key])
+            print "(%s:%s) will be accepted" % (class_name, method_name)
         return False
 
     def should_bind_field(self, class_name, field_name, verbose=False):
