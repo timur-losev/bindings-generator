@@ -767,6 +767,7 @@ class NativeClass(object):
         self.public_fields = []
         self.methods = {}
         self.static_methods = {}
+        self.dict_of_override_method_should_be_bound = {} # Key: function name, Value: list of NativeFunction
         self.generator = generator
         self.is_abstract = self.class_name in generator.abstract_classes
         self.is_persistent = self.class_name in generator.persistent_classes
@@ -906,6 +907,29 @@ class NativeClass(object):
             return NativeClass._is_method_in_parents(current_class.parents[0], method_name)
         return False
 
+    def _add_temp_override_method(self, m):
+        if m.func_name in self.dict_of_override_method_should_be_bound:
+            self.dict_of_override_method_should_be_bound[m.func_name].append(m)
+        else:
+            self.dict_of_override_method_should_be_bound[m.func_name] = [m]
+
+    def _handle_override_method_with_same_name_as_instance_method(self):
+        if len(self.dict_of_override_method_should_be_bound) == 0:
+            return
+
+        for om_name in self.dict_of_override_method_should_be_bound:
+            if om_name in self.methods:
+                previous_m = self.methods[om_name]
+                if isinstance(previous_m, NativeOverloadedFunction):
+                    for om in self.dict_of_override_method_should_be_bound[om_name]:
+                        previous_m.append(om)
+                else:
+                    self.methods[om_name] = NativeOverloadedFunction([previous_m])
+                    for om in self.dict_of_override_method_should_be_bound[om_name]:
+                        self.methods[om_name].append(om)
+                del self.dict_of_override_method_should_be_bound[om_name]
+                return
+
     def _is_ref_class(self, depth = 0):
         """
         Mark the class as 'cocos2d::Ref' or its subclass.
@@ -971,6 +995,9 @@ class NativeClass(object):
                                     previous_m.append(m)
                                 else:
                                     self.override_methods[registration_name] = NativeOverloadedFunction([m, previous_m])
+
+                        self._add_temp_override_method(m)
+                        self._handle_override_method_with_same_name_as_instance_method()
                         return False
 
                 if m.static:
@@ -991,6 +1018,9 @@ class NativeClass(object):
                             previous_m.append(m)
                         else:
                             self.methods[registration_name] = NativeOverloadedFunction([m, previous_m])
+
+                    self._handle_override_method_with_same_name_as_instance_method()
+
             return True
 
         elif self._current_visibility == cindex.AccessSpecifierKind.PUBLIC and cursor.kind == cindex.CursorKind.CONSTRUCTOR and not self.is_abstract:
