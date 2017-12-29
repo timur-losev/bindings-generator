@@ -12,7 +12,7 @@ bool register_all_${prefix}(se::Object* obj)
     se::Object* ns = nsVal.toObject();
 #else 
     // Get the global ns
-    se::Object* ns = ScriptEngine::getInstance()->getGlobalObject();
+    se::Object* ns = se::ScriptEngine::getInstance()->getGlobalObject();
 #end if
 
 #for jsclass in $sorted_classes
