@@ -6,7 +6,6 @@
 
 from clang import cindex
 import sys
-import pdb
 import ConfigParser
 import yaml
 import re
@@ -69,10 +68,241 @@ cindex.CursorKind.CXX_BOOL_LITERAL_EXPR,
 # [C++0x 2.14.7] C++ Pointer Literal.
 cindex.CursorKind.CXX_NULL_PTR_LITERAL_EXPR,
 
+cindex.CursorKind.GNU_NULL_EXPR,
+
 # An expression that refers to some value declaration, such as a function,
 # varible, or enumerator.
 cindex.CursorKind.DECL_REF_EXPR
 ]
+
+stl_type_map = {
+    'std_function_args': 1000,
+    'std::unordered_map': 2,
+    'std::unordered_multimap': 2,
+    'std::map': 2,
+    'std::multimap': 2,
+    'std::vector': 1,
+    'std::list': 1,
+    'std::forward_list': 1,
+    'std::priority_queue': 1,
+    'std::set': 1,
+    'std::multiset': 1,
+    'std::unordered_set': 1,
+    'std::unordered_multiset': 1,
+    'std::stack': 1,
+    'std::queue': 1,
+    'std::deque': 1,
+    'std::array': 1,
+
+    'unordered_map': 2,
+    'unordered_multimap': 2,
+    'map': 2,
+    'multimap': 2,
+    'vector': 1,
+    'list': 1,
+    'forward_list': 1,
+    'priority_queue': 1,
+    'set': 1,
+    'multiset': 1,
+    'unordered_set': 1,
+    'unordered_multiset': 1,
+    'stack': 1,
+    'queue': 1,
+    'deque': 1,
+    'array': 1
+}
+
+def find_sub_string_count(s, start, end, substr):
+    count = 0
+    pos = s.find(substr, start, end)
+    if pos != -1:
+        next_count = find_sub_string_count(s, pos + 1, end, substr)
+        count = next_count + 1
+    return count
+
+def split_container_name(name):
+    name = name.strip()
+    left = name.find('<')
+    right = -1
+
+    if left != -1:
+        right = name.rfind('>')
+
+    if left == -1 or right == -1:
+        return [name]
+
+    first = name[:left]
+    results = [first]
+
+    comma = name.find(',', left + 1, right)
+    if comma == -1:
+        results.append(name[left+1:right].strip())
+        return results
+
+
+    left += 1
+    while comma != -1:
+        lt_count = find_sub_string_count(name, left, comma, '<')
+        gt_count = find_sub_string_count(name, left, comma, '>')
+        if lt_count == gt_count:
+            results.append(name[left:comma].strip())
+            left = comma + 1
+        comma = name.find(',', comma + 1, right)
+
+    if left < right:
+        results.append(name[left:right].strip())
+    name_len = len(name)
+    if right < name_len - 1:
+        results.append(name[right+1:].strip())
+
+    return results
+
+
+def normalize_type_name_by_sections(sections):
+    container_name = sections[0]
+    suffix = ''
+
+    index = len(sections) - 1
+    while sections[index] == '*' or sections[index] == '&':
+        suffix += sections[index]
+        index -= 1
+
+    name_for_search = container_name.replace('const ', '').replace('&', '').replace('*', '').strip()
+    if name_for_search in stl_type_map:
+        normalized_name = container_name + '<' + ', '.join(sections[1:1+stl_type_map[name_for_search]]) + '>' + suffix
+    else:
+        normalized_name = container_name + '<' + ', '.join(sections[1:]) + '>'
+
+    return normalized_name
+
+
+def normalize_std_function_by_sections(sections):
+    normalized_name = ''
+    if sections[0] == 'std_function_args':
+        normalized_name = '(' + ', '.join(sections[1:]) + ')'
+    elif sections[0] == 'std::function' or sections[0] == 'function':
+        normalized_name = 'std::function<' + sections[1] + ' ' + sections[2] + '>'
+    else:
+        assert(False)
+    return normalized_name
+
+
+def normalize_type_str(s, depth=1):
+    if s.find('std::function') == 0 or s.find('function') == 0:
+        start = s.find('<')
+        assert(start > 0)
+        sections = [s[:start]] # std::function
+        start += 1
+        ret_pos = s.find('(', start)
+        sections.append(s[start:ret_pos].strip()) # return type
+        end = s.find(')', ret_pos + 1)
+        sections.append('std_function_args<' + s[ret_pos+1:end].strip() + '>')
+    else:
+        sections = split_container_name(s)
+    section_len = len(sections)
+    if section_len == 1:
+        return sections[0]
+
+    # for section in sections:
+    #     print('>' * depth + section)
+
+    if sections[0] == 'const std::basic_string' or sections[0] == 'const basic_string':
+        last_section = sections[len(sections) - 1]
+        if last_section == '&' or last_section == '*' or last_section.startswith('::'):
+            return 'const std::string' + last_section
+        else:
+            return 'const std::string'
+
+    elif sections[0] == 'std::basic_string' or sections[0] == 'basic_string':
+        last_section = sections[len(sections) - 1]
+        if last_section == '&' or last_section == '*' or last_section.startswith('::'):
+            return 'std::string' + last_section
+        else:
+            return 'std::string'
+
+    for i in range(1, section_len):
+        sections[i] = normalize_type_str(sections[i], depth+1)
+
+    if sections[0] == 'std::function' or sections[0] == 'function' or sections[0] == 'std_function_args':
+        normalized_name = normalize_std_function_by_sections(sections)
+    else:
+        normalized_name = normalize_type_name_by_sections(sections)
+    return normalized_name
+
+
+class BaseEnumeration(object):
+    """
+    Common base class for named enumerations held in sync with Index.h values.
+
+    Subclasses must define their own _kinds and _name_map members, as:
+    _kinds = []
+    _name_map = None
+    These values hold the per-subclass instances and value-to-name mappings,
+    respectively.
+
+    """
+
+    def __init__(self, value):
+        if value >= len(self.__class__._kinds):
+            self.__class__._kinds += [None] * (value - len(self.__class__._kinds) + 1)
+        if self.__class__._kinds[value] is not None:
+            raise ValueError('{0} value {1} already loaded'.format(
+                str(self.__class__), value))
+        self.value = value
+        self.__class__._kinds[value] = self
+        self.__class__._name_map = None
+
+
+    def from_param(self):
+        return self.value
+
+    @property
+    def name(self):
+        """Get the enumeration name of this cursor kind."""
+        if self._name_map is None:
+            self._name_map = {}
+            for key, value in self.__class__.__dict__.items():
+                if isinstance(value, self.__class__):
+                    self._name_map[value] = key
+        return self._name_map[self]
+
+    @classmethod
+    def from_id(cls, id):
+        if id >= len(cls._kinds) or cls._kinds[id] is None:
+            raise ValueError('Unknown template argument kind %d' % id)
+        return cls._kinds[id]
+
+    def __repr__(self):
+        return '%s.%s' % (self.__class__, self.name,)
+
+### Availability Kinds ###
+
+class AvailabilityKind(BaseEnumeration):
+    """
+    Describes the availability of an entity.
+    """
+
+    # The unique kind objects, indexed by id.
+    _kinds = []
+    _name_map = None
+
+    def __repr__(self):
+        return 'AvailabilityKind.%s' % (self.name,)
+
+AvailabilityKind.AVAILABLE = AvailabilityKind(0)
+AvailabilityKind.DEPRECATED = AvailabilityKind(1)
+AvailabilityKind.NOT_AVAILABLE = AvailabilityKind(2)
+AvailabilityKind.NOT_ACCESSIBLE = AvailabilityKind(3)
+
+def get_availability(cursor):
+    """
+    Retrieves the availability of the entity pointed at by the cursor.
+    """
+    if not hasattr(cursor, '_availability'):
+        cursor._availability = cindex.conf.lib.clang_getCursorAvailability(cursor)
+
+    return AvailabilityKind.from_id(cursor._availability)
+
 
 def native_name_from_type(ntype, underlying=False):
     kind = ntype.kind #get_canonical().kind
@@ -120,9 +350,11 @@ def get_namespaced_class_name(declaration_cursor):
     ns_list = build_namespace(declaration_cursor, [])
     ns_list.reverse()
     ns = "::".join(ns_list)
+    display_name = declaration_cursor.displayname.replace("::__ndk1", "")
     if len(ns) > 0:
-        return ns + "::" + declaration_cursor.displayname
-    return declaration_cursor.displayname
+        ns = ns.replace("::__ndk1", "")
+        return ns + "::" + display_name
+    return display_name
 
 def generate_namespace_list(cursor, namespaces=[]):
     '''
@@ -143,6 +375,7 @@ def get_namespace_name(declaration_cursor):
     ns = "::".join(ns_list)
 
     if len(ns) > 0:
+        ns = ns.replace("::__ndk1", "")
         return ns + "::"
 
     return declaration_cursor.displayname
@@ -160,8 +393,8 @@ class NativeType(object):
         self.not_supported = False
         self.param_types = []
         self.ret_type = None
-        self.namespaced_class_name = ""
-        self.namespace_name  = ""
+        self.namespaced_class_name = "" # with namespace and class name
+        self.namespace_name  = "" # only contains namespace
         self.name = ""
         self.whole_name = None
         self.is_const = False
@@ -200,23 +433,27 @@ class NativeType(object):
             nt = NativeType(generator)
             decl = ntype.get_declaration()
 
-            if ntype.kind == cindex.TypeKind.RECORD:
-                if decl.kind == cindex.CursorKind.CLASS_DECL:
-                    nt.is_object = True
-                nt.name = decl.displayname
-                nt.namespaced_class_name = get_namespaced_class_name(decl)
-                nt.namespace_name  = get_namespace_name(decl)
+            nt.namespaced_class_name = get_namespaced_class_name(decl).replace('::__ndk1', '')
+
+            if decl.kind == cindex.CursorKind.CLASS_DECL \
+                and not nt.namespaced_class_name.startswith('std::function') \
+                and not nt.namespaced_class_name.startswith('std::string') \
+                and not nt.namespaced_class_name.startswith('std::basic_string'):
+                nt.is_object = True
+                displayname = decl.displayname.replace('::__ndk1', '')
+                nt.name = normalize_type_str(displayname)
+                nt.namespaced_class_name = normalize_type_str(nt.namespaced_class_name)
+                nt.namespace_name = get_namespace_name(decl)
                 nt.whole_name = nt.namespaced_class_name
             else:
                 if decl.kind == cindex.CursorKind.NO_DECL_FOUND:
                     nt.name = native_name_from_type(ntype)
                 else:
                     nt.name = decl.spelling
-                nt.namespaced_class_name = get_namespaced_class_name(decl)
-                nt.namespace_name  = get_namespace_name(decl)
+                nt.namespace_name = get_namespace_name(decl)
 
-                if nt.namespaced_class_name == "std::string":
-                    nt.name = nt.namespaced_class_name
+                if len(nt.namespaced_class_name) > 0:
+                    nt.namespaced_class_name = normalize_type_str(nt.namespaced_class_name)
 
                 if nt.namespaced_class_name.startswith("std::function"):
                     nt.name = "std::function"
@@ -235,7 +472,7 @@ class NativeType(object):
                     nt.name = "std::function"
 
                 if nt.name != INVALID_NATIVE_TYPE and nt.name != "std::string" and nt.name != "std::function":
-                    if ntype.kind == cindex.TypeKind.UNEXPOSED or ntype.kind == cindex.TypeKind.TYPEDEF:
+                    if ntype.kind == cindex.TypeKind.UNEXPOSED or ntype.kind == cindex.TypeKind.TYPEDEF or ntype.kind == cindex.TypeKind.ELABORATED:
                         ret = NativeType.from_type(ntype.get_canonical(), generator)
                         if ret.name != "":
                             if decl.kind == cindex.CursorKind.TYPEDEF_DECL:
@@ -250,12 +487,17 @@ class NativeType(object):
                     if type_map.has_key(nt.enum_kind):
                         nt.enum_declare_type = type_map[nt.enum_kind]
                     else:
-                        raise TypeError("Can't find (" + str(nt.enum_kind) + ") in type_map")
+                        nt.enum_declare_type = 'int' # FIXME: cjh
+                        # raise TypeError("Can't find (" + str(nt.enum_kind) + ") in type_map")
                     # print("==> enum kind: " + nt.namespaced_class_name + ": " + str(cdecl.enum_type.kind))
 
                 if nt.name == "std::function":
-                    nt.namespaced_class_name = get_namespaced_class_name(cdecl)
-                    r = re.compile('function<(.+) .*\((.*)\)>').search(cdecl.displayname)
+                    nt.is_object = False
+                    lambda_display_name = get_namespaced_class_name(cdecl)
+                    lambda_display_name = lambda_display_name.replace("::__ndk1", "")
+                    lambda_display_name = normalize_type_str(lambda_display_name)
+                    nt.namespaced_class_name = lambda_display_name
+                    r = re.compile('function<([^\s]+).*\((.*)\)>').search(nt.namespaced_class_name)
                     (ret_type, params) = r.groups()
                     params = filter(None, params.split(", "))
 
@@ -267,8 +509,8 @@ class NativeType(object):
         if nt.name == INVALID_NATIVE_TYPE:
             nt.not_supported = True
 
-        if re.search("(short|int|double|float|long|ssize_t)$", nt.name) != None:
-            nt.is_numeric = True;
+        if re.search("(short|int|double|float|long|ssize_t)$", nt.name) is not None:
+            nt.is_numeric = True
 
         return nt
 
@@ -533,7 +775,7 @@ class NativeFunction(object):
         self.not_supported = False
         self.is_override = False
         self.ret_type = NativeType.from_type(cursor.result_type, generator)
-        self.comment = self.get_comment(cursor.getRawComment())
+        self.comment = self.get_comment(cursor.raw_comment)
 
         # parse the arguments
         # if self.func_name == "spriteWithFile":
@@ -659,7 +901,7 @@ class NativeOverloadedFunction(object):
         for m in func_array:
             self.min_args = min(self.min_args, m.min_args)
 
-        self.comment = self.get_comment(func_array[0].cursor.getRawComment())
+        self.comment = self.get_comment(func_array[0].cursor.raw_comment)
 
     def get_comment(self, comment):
         replaceStr = comment
@@ -773,7 +1015,7 @@ class NativeClass(object):
         self.is_persistent = self.class_name in generator.persistent_classes
         self.is_class_owned_by_cpp = self.class_name in self.generator.classes_owned_by_cpp
         # print("class_name:" + self.class_name + ", is_class_owned_by_cpp:" + str(self.is_class_owned_by_cpp))
-        self._current_visibility = cindex.AccessSpecifierKind.PRIVATE
+        self._current_visibility = cindex.AccessSpecifier.PRIVATE
         #for generate lua api doc
         self.override_methods = {}
         self.has_constructor  = False
@@ -786,7 +1028,6 @@ class NativeClass(object):
             self.target_class_name = registration_name
         self.namespaced_class_name = get_namespaced_class_name(cursor)
         self.namespace_name        = get_namespace_name(cursor)
-
         self.parse()
 
     @property
@@ -972,13 +1213,13 @@ class NativeClass(object):
 
         elif cursor.kind == cindex.CursorKind.FIELD_DECL:
             self.fields.append(NativeField(cursor, self.generator))
-            if self._current_visibility == cindex.AccessSpecifierKind.PUBLIC and NativeField.can_parse(cursor.type, self.generator):
+            if self._current_visibility == cindex.AccessSpecifier.PUBLIC and NativeField.can_parse(cursor.type, self.generator):
                 self.public_fields.append(NativeField(cursor, self.generator))
         elif cursor.kind == cindex.CursorKind.CXX_ACCESS_SPEC_DECL:
-            self._current_visibility = cursor.get_access_specifier()
-        elif cursor.kind == cindex.CursorKind.CXX_METHOD and cursor.get_availability() != cindex.AvailabilityKind.DEPRECATED:
+            self._current_visibility = cursor.access_specifier
+        elif cursor.kind == cindex.CursorKind.CXX_METHOD and get_availability(cursor) != AvailabilityKind.DEPRECATED:
             # skip if variadic
-            if self._current_visibility == cindex.AccessSpecifierKind.PUBLIC and not cursor.type.is_function_variadic():
+            if self._current_visibility == cindex.AccessSpecifier.PUBLIC and not cursor.type.is_function_variadic():
                 m = NativeFunction(cursor, self.generator)
                 registration_name = self.generator.should_rename_function(self.class_name, m.func_name) or m.func_name
                 # bail if the function is not supported (at least one arg not supported)
@@ -1023,7 +1264,7 @@ class NativeClass(object):
 
             return True
 
-        elif self._current_visibility == cindex.AccessSpecifierKind.PUBLIC and cursor.kind == cindex.CursorKind.CONSTRUCTOR and not self.is_abstract:
+        elif self._current_visibility == cindex.AccessSpecifier.PUBLIC and cursor.kind == cindex.CursorKind.CONSTRUCTOR and not self.is_abstract:
             # Skip copy constructor
             if cursor.displayname == self.class_name + "(const " + self.namespaced_class_name + " &)":
                 # print "Skip copy constructor: " + cursor.displayname
@@ -1327,9 +1568,16 @@ class Generator(object):
             self._deep_iterate(tu.cursor)
 
     def _deep_iterate(self, cursor, depth=0):
+
+        def get_children_array_from_iter(iter):
+            children = []
+            for child in iter:
+                children.append(child)
+            return children
+
         # get the canonical type
         if cursor.kind == cindex.CursorKind.CLASS_DECL:
-            if cursor == cursor.type.get_declaration() and len(cursor.get_children_array()) > 0:
+            if cursor == cursor.type.get_declaration() and len(get_children_array_from_iter(cursor.get_children())) > 0:
                 is_targeted_class = True
                 if self.cpp_ns:
                     is_targeted_class = False
@@ -1468,7 +1716,7 @@ class Generator(object):
 
     def api_param_name_from_native(self,native_name):
         lower_name = native_name.lower()
-        if lower_name == "std::string":
+        if lower_name == "std::string" or lower_name == 'string' or lower_name == 'basic_string' or lower_name == 'std::basic_string':
             return "str"
 
         if lower_name.find("unsigned ") >= 0 :
@@ -1521,6 +1769,7 @@ class Generator(object):
         else:
             return namespace_class_name
 def main():
+
     from optparse import OptionParser
 
     parser = OptionParser("usage: %prog [options] {configfile}")
@@ -1560,7 +1809,7 @@ def main():
             sections = []
             sections.append(opts.section)
         else:
-            raise Exception("Section not found in config file")
+            raise Exception("Section %s not found in config file" % opts.section)
     else:
         print("processing all sections")
         sections = config.sections()
