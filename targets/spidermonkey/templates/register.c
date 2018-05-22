@@ -27,10 +27,7 @@ static bool js_${current_class.underlined_class_name}_finalize(se::State& s)
     CCLOGINFO("jsbindings: finalizing JS object %p (${current_class.namespaced_class_name})", s.nativeThisObject());
     #if $current_class.is_ref_class
     ${current_class.namespaced_class_name}* cobj = (${current_class.namespaced_class_name}*)s.nativeThisObject();
-    if (cobj->getReferenceCount() == 1)
-        cobj->autorelease();
-    else
-        cobj->release();
+    cobj->release();
     #else
         #if not $current_class.is_class_owned_by_cpp
     auto iter = se::NonRefNativePtrCreatedByCtorMap::find(s.nativeThisObject());
