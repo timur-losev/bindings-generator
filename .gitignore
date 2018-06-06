@@ -6,3 +6,4 @@ test/userconf.ini
 test/simple_test_bindings/
 .idea
 .swp
+libclang
