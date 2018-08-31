@@ -1326,7 +1326,7 @@ class Generator(object):
 
         for clang_arg in self.clang_args:
             if not os.path.exists(clang_arg.replace("-I","")):
-                find_ret = re.search(r"lib(\d+)/clang/\d+(\.\d+)*/include", clang_arg)
+                find_ret = re.search(r"lib(\d+)?/clang/\d+(\.\d+)*/include", clang_arg)
                 if None != find_ret:
                     clang_versions = os.path.abspath(os.path.join(clang_arg,"../.."))
                     clang_folders = os.listdir(clang_versions)
