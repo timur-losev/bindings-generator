@@ -150,6 +150,7 @@ conversions:
     "Mat4": "ok &= Mat4_to_seval(${in_value}, &${out_value})"
     "Vec2": "ok &= Vec2_to_seval(${in_value}, &${out_value})"
     "Vec3": "ok &= Vec3_to_seval(${in_value}, &${out_value})"
+    "Vec4": "ok &= Vec4_to_seval(${in_value}, &${out_value})"
     "BlendFunc": "ok &= blendfunc_to_seval(${in_value}, &${out_value})"
     "Quaternion": "ok &= Quaternion_to_seval(${in_value}, &${out_value})"
     # "OffMeshLinkData": "${out_value} = offMeshLinkData_to_seval(${in_value})"
