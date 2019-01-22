@@ -65,6 +65,7 @@ conversions:
     "ValueVector": "ok &= seval_to_ccvaluevector(${in_value}, &${out_value})"
     "@vector<std::string.*>": "ok &= seval_to_std_vector_string(${in_value}, &${out_value})"
     "@vector<int.*>": "ok &= seval_to_std_vector_int(${in_value}, &${out_value})"
+    "@vector<float.*>": "ok &= seval_to_std_vector_float(${in_value}, &${out_value})"
     "@vector<.*Texture.*>": "ok &= seval_to_std_vector_Texture(${in_value}, &${out_value})"
     "@vector<.*RenderTarget.*>": "ok &= seval_to_std_vector_RenderTarget(${in_value}, &${out_value})"
     "vector<std::unordered_map<std::string, cocos2d::Value>>": "ok &= seval_to_EffectDefineTemplate(${in_value}, &${out_value})"
